@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+*.egg-info/
+
+# Build output
+build/
+dist/
+*.manifest
+*.spec.bak
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large model files (downloaded at build time)
+face_landmarker.task
+
+# Screenshots (exclude captured ones, keep icon)
+2026-*.png
+
+# Test output
+test_out_opt.txt
+test_out_opt_fix.txt

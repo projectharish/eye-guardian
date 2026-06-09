@@ -1,0 +1,12 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Name=Eye Guardian
+Comment=Monitor eye health and posture in the background
+Exec="/home/harish/eye notification app/start.sh"
+Icon="/home/harish/eye notification app/icon.png"
+Terminal=false
+Type=Application
+Categories=Utility;Health;
+Keywords=eye;health;posture;reminder;
+Path=/home/harish/eye notification app
+StartupNotify=true

@@ -1,0 +1,12 @@
+opencv-python
+opencv-contrib-python
+numpy
+Pillow
+plyer
+notify2
+psutil
+pystray
+tkinter-tooltip
+mediapipe
+requests
+pyinstaller

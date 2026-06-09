@@ -1,0 +1,43 @@
+{
+  "notifications": {
+    "break_reminder": {
+      "enabled": true,
+      "interval_minutes": 20,
+      "position": "top-right",
+      "duration_seconds": 20
+    },
+    "blink_reminder": {
+      "enabled": true,
+      "interval_minutes": 10,
+      "position": "top-right",
+      "duration_seconds": 5
+    },
+    "posture_reminder": {
+      "enabled": true,
+      "interval_minutes": 15,
+      "position": "top-right",
+      "duration_seconds": 10
+    }
+  },
+  "camera": {
+    "enabled": true,
+    "check_interval_minutes": 5,
+    "optimal_distance_cm": 55,
+    "distance_tolerance_cm": 15,
+    "camera_index": 0,
+    "reference_face_width": 137.98745002132603
+  },
+  "posture_analysis": {
+    "enabled": true,
+    "check_interval_minutes": 5,
+    "head_tilt_threshold": 12,
+    "slouch_threshold": 15,
+    "base_vertical_offset": -1.8559694290161133
+  },
+  "general": {
+    "autostart": true,
+    "minimize_to_tray": true,
+    "sound_enabled": true,
+    "language": "en"
+  }
+}
