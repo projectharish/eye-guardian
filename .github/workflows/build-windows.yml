@@ -12,7 +12,8 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -26,19 +27,19 @@ jobs:
       shell: cmd
 
     - name: Download face landmarker model
-      run: |
-        python download_models.py
+      run: python download_models.py
+
+    - name: Convert icon to Windows format
+      run: python convert_icon.py
 
     - name: Build standalone EXE with PyInstaller
-      run: |
-        pyinstaller --clean EyeGuardian.spec
+      run: pyinstaller --clean EyeGuardian.spec
 
     - name: Verify EXE was created
       run: |
         if (Test-Path "dist\EyeGuardian.exe") {
           $size = (Get-Item "dist\EyeGuardian.exe").Length / 1MB
           Write-Host "EyeGuardian.exe created successfully ($([math]::Round($size, 2)) MB)"
-          Write-Host "This EXE has Python embedded - no Python installation needed on target machine"
         } else {
           Write-Error "EyeGuardian.exe was not found!"
           exit 1
@@ -61,16 +62,16 @@ jobs:
         }
       shell: pwsh
 
-    # Upload the standalone EXE (portable, no install needed)
     - name: Upload Standalone EXE
       uses: actions/upload-artifact@v4
       with:
         name: EyeGuardian-Portable
         path: dist/EyeGuardian.exe
+        retention-days: 30
 
-    # Upload the installer (Setup.exe with shortcuts, autostart, uninstaller)
     - name: Upload Installer
       uses: actions/upload-artifact@v4
       with:
         name: EyeGuardian-Installer
         path: dist/EyeGuardianSetup.exe
+        retention-days: 30

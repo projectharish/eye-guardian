@@ -7,7 +7,7 @@ datas = [
     ('face_landmarker.task', '.'),
     ('icon.png', '.'),
     ('icon.ico', '.'),
-    ('config.json', '.'),
+    # Note: config.json is now stored in %APPDATA%\EyeGuardian\ by the app itself
 ]
 binaries = []
 hiddenimports = []

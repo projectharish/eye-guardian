@@ -19,7 +19,8 @@ import queue
 from main_app import EyePostureHealthApp
 from config_gui import ConfigGUI
 
-logging.basicConfig(level=logging.INFO)
+# Use basic logging without file handler to avoid permission issues
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class EyeGuardianGUI:

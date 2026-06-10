@@ -33,10 +33,32 @@ A comprehensive cross-platform desktop application that helps you maintain healt
 
 ## Installation
 
-### Prerequisites
+### Quick Install (Pre-built)
+
+**Windows:**
+- Download the latest `EyeGuardianSetup.exe` from the [Releases](../../releases) page
+- Run the installer
+- No Python installation required!
+
+**Linux:**
+- Download the latest `EyeGuardian-Linux.tar.gz` from the [Releases](../../releases) page
+- Extract the archive: `tar -xzf EyeGuardian-Linux.tar.gz`
+- Run the executable: `./EyeGuardian`
+
+### Manual Installation
+
+#### Prerequisites
 - Python 3.8 or higher
 - Webcam (optional, for camera analysis features)
 - Administrator privileges (for autostart setup)
+
+### Data Directory
+The app stores configuration and log files in user-writable directories to avoid permission issues:
+- **Windows**: `%APPDATA%\EyeGuardian\`
+- **macOS**: `~/Library/Application Support/EyeGuardian/`
+- **Linux**: `~/.config/EyeGuardian/`
+
+If the app cannot write to these directories, it will fall back to the system temp directory.
 
 ### Step 1: Clone or Download
 ```bash
@@ -271,6 +293,32 @@ Using facial landmarks, the app detects:
 - 4GB RAM
 - HD Webcam
 - 100MB disk space
+
+## Automated Builds
+
+This project uses GitHub Actions to automatically build installers for Windows and Linux.
+
+### Build Status
+
+- **Windows**: [![Build Windows](../../actions/workflows/build-windows.yml/badge.svg)](../../actions/workflows/build-windows.yml)
+- **Linux**: [![Build Linux](../../actions/workflows/build-linux.yml/badge.svg)](../../actions/workflows/build-linux.yml)
+
+### Downloading Builds
+
+**From Releases:**
+- Go to the [Releases](../../releases) page
+- Download the latest installer for your platform
+
+**From Workflow Runs:**
+- Go to the [Actions](../../actions) tab
+- Click on a workflow run
+- Download artifacts from the bottom of the page
+
+### Building Locally
+
+For detailed instructions on building locally, see:
+- [Windows Build Guide](BUILD_WINDOWS.md)
+- [GitHub Actions Guide](GITHUB_ACTIONS.md)
 
 ## License
 

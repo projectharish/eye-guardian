@@ -53,7 +53,7 @@ Source: "dist\EyeGuardian.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "face_landmarker.task"; DestDir: "{app}"; Flags: ignoreversion
 Source: "icon.png"; DestDir: "{app}"; Flags: ignoreversion
 Source: "icon.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "config.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
+; Note: config.json is now stored in %APPDATA%\EyeGuardian\ by the app itself
 
 [Registry]
 ; Autostart entry (only if user selected the task)
@@ -70,4 +70,6 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}
 [UninstallDelete]
 Type: files; Name: "{app}\app.log"
 Type: files; Name: "{app}\eye_posture_health.log"
+; Clean up user data directory (config and logs)
+Type: filesandordirs; Name: "{userappdata}\EyeGuardian"
 Type: dirifempty; Name: "{app}"

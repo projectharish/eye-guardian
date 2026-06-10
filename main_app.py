@@ -21,21 +21,69 @@ from health_messages import (
     GOOD_POSTURE_MESSAGES, GOOD_DISTANCE_MESSAGES
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('eye_posture_health.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+
+def get_user_data_dir():
+    """Get user-writable directory for config and logs."""
+    if platform.system() == 'Windows':
+        # Use AppData\Roaming on Windows
+        appdata = os.environ.get('APPDATA', os.path.expanduser('~'))
+        data_dir = os.path.join(appdata, 'EyeGuardian')
+    elif platform.system() == 'Darwin':
+        # Use ~/Library/Application Support on macOS
+        data_dir = os.path.expanduser('~/Library/Application Support/EyeGuardian')
+    else:
+        # Use ~/.config/EyeGuardian on Linux
+        data_dir = os.path.expanduser('~/.config/EyeGuardian')
+    
+    # Create directory if it doesn't exist
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+
+def setup_logging():
+    """Setup logging with user-writable directory."""
+    data_dir = get_user_data_dir()
+    log_file = os.path.join(data_dir, 'eye_posture_health.log')
+    
+    # Try to create log file in user directory
+    try:
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_file),
+                logging.StreamHandler()
+            ]
+        )
+    except (PermissionError, OSError) as e:
+        # Fallback to temp directory if user directory fails
+        import tempfile
+        temp_log = os.path.join(tempfile.gettempdir(), 'eye_posture_health.log')
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(temp_log),
+                logging.StreamHandler()
+            ]
+        )
+        print(f"Warning: Could not write to {log_file}, using {temp_log} instead")
+    
+    return logging.getLogger(__name__)
+
+
+logger = setup_logging()
 
 
 class EyePostureHealthApp:
     """Main application class for eye and posture health reminders."""
     
-    def __init__(self, config_path: str = 'config.json'):
+    def __init__(self, config_path: str = None):
+        # Use user data directory for config if not specified
+        if config_path is None:
+            data_dir = get_user_data_dir()
+            config_path = os.path.join(data_dir, 'config.json')
+        
         self.config_path = config_path
         self.config = self.load_config()
         
@@ -76,9 +124,15 @@ class EyePostureHealthApp:
                 return json.load(f)
         except FileNotFoundError:
             logger.warning(f"Config file not found: {self.config_path}")
-            return self.get_default_config()
+            # Create default config in user directory
+            default_config = self.get_default_config()
+            self.save_config_to_path(default_config, self.config_path)
+            return default_config
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing config file: {e}")
+            return self.get_default_config()
+        except Exception as e:
+            logger.error(f"Error loading config: {e}")
             return self.get_default_config()
     
     def get_default_config(self) -> Dict:
@@ -129,12 +183,18 @@ class EyePostureHealthApp:
     
     def save_config(self):
         """Save current configuration to file."""
+        self.save_config_to_path(self.config, self.config_path)
+    
+    def save_config_to_path(self, config: Dict, path: str):
+        """Save configuration to a specific path."""
         try:
-            with open(self.config_path, 'w') as f:
-                json.dump(self.config, f, indent=2)
-            logger.info("Configuration saved")
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w') as f:
+                json.dump(config, f, indent=2)
+            logger.info(f"Configuration saved to {path}")
         except Exception as e:
-            logger.error(f"Error saving config: {e}")
+            logger.error(f"Error saving config to {path}: {e}")
     
     def reload_config(self):
         """Reload configuration from file."""

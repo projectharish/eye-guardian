@@ -9,7 +9,8 @@ import json
 import threading
 import logging
 
-logging.basicConfig(level=logging.INFO)
+# Use basic logging without file handler to avoid permission issues
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
