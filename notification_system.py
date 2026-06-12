@@ -1,11 +1,15 @@
 """
 Cross-platform notification system for Windows and Linux.
 Supports customizable notification positions and styles.
+Windows: Uses native toast notifications via PowerShell + permission checks.
+Linux: Uses notify2 / plyer with fallback.
 """
 
 import platform
 import json
 import random
+import subprocess
+import sys
 from typing import Dict, List
 import logging
 import os
@@ -28,6 +32,21 @@ try:
 except ImportError:
     NOTIFY2_AVAILABLE = False
     logger.warning("notify2 not available")
+
+# Windows registry module (built-in, only available on Windows)
+try:
+    import winreg
+    WINREG_AVAILABLE = True
+except ImportError:
+    WINREG_AVAILABLE = False
+
+# tkinter reference stored at class level (set by main_gui)
+_tk_root_ref = None
+
+def set_tk_root(root):
+    """Store a reference to the tkinter root so we can show popup fallbacks."""
+    global _tk_root_ref
+    _tk_root_ref = root
 
 
 class NotificationSystem:
@@ -87,23 +106,167 @@ class NotificationSystem:
             logger.error(f"Error showing notification: {e}")
             return self._show_fallback_notification(title, message)
     
-    def _show_windows_notification(self, title: str, message: str, 
-                                   duration: int, position: str) -> bool:
-        """Show notification on Windows."""
+    def check_windows_notification_permissions(self) -> Dict:
+        """Check if Windows notifications are enabled. Returns a dict with status details."""
+        if self.system != 'Windows' or not WINREG_AVAILABLE:
+            return {'allowed': True, 'reason': 'N/A'}
+
+        issues = []
         try:
-            if PLYER_AVAILABLE:
+            # Check global notification settings
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r'Software\Microsoft\Windows\CurrentVersion\PushNotifications'
+            )
+            try:
+                toast_enabled, _ = winreg.QueryValueEx(key, 'ToastEnabled')
+                if toast_enabled == 0:
+                    issues.append('Windows toast notifications are disabled in system settings.')
+            except FileNotFoundError:
+                pass
+            winreg.CloseKey(key)
+
+            # Check Focus Assist (Do Not Disturb) - Windows 10/11
+            try:
+                key2 = winreg.OpenKey(
+                    winreg.HKEY_CURRENT_USER,
+                    r'Software\Microsoft\Windows\CurrentVersion\QuietHours'
+                )
+                profile, _ = winreg.QueryValueEx(key2, 'Profile')
+                # 0=off, 1=priority only, 2=alarms only
+                if profile and int(profile) > 0:
+                    issues.append('Focus Assist (Do Not Disturb) is enabled and may block notifications.')
+                winreg.CloseKey(key2)
+            except (FileNotFoundError, OSError):
+                pass
+
+        except OSError as e:
+            logger.debug(f'Could not read notification registry: {e}')
+
+        return {'allowed': len(issues) == 0, 'reason': ' '.join(issues) if issues else 'OK'}
+
+    def prompt_windows_notification_permissions(self):
+        """Show a dialog prompting user to enable notifications if they are blocked."""
+        if self.system != 'Windows':
+            return
+        status = self.check_windows_notification_permissions()
+        if not status['allowed']:
+            import tkinter as tk
+            from tkinter import messagebox
+            # Use stored tk root or create a temporary one
+            root = _tk_root_ref
+            if root is None:
+                root = tk.Tk()
+                root.withdraw()
+                temp = True
+            else:
+                temp = False
+            try:
+                result = messagebox.askyesno(
+                    'EyeGuardian - Notification Permissions',
+                    'Windows may be blocking desktop notifications.\n\n'
+                    f"Issue detected:\n{status['reason']}\n\n"
+                    'Would you like to open Windows Notification Settings now?\n'
+                    'Please enable "Get notifications from apps and other senders" '
+                    'and turn off Focus Assist / Do Not Disturb.'
+                )
+                if result:
+                    # Open Windows notification settings
+                    subprocess.Popen(
+                        ['powershell', '-Command',
+                         'Start-Process "ms-settings:notifications"'],
+                        creationflags=0x08000000  # CREATE_NO_WINDOW
+                    )
+            finally:
+                if temp:
+                    root.destroy()
+
+    def _show_windows_notification(self, title: str, message: str,
+                                   duration: int, position: str) -> bool:
+        """Show notification on Windows using native PowerShell toast, with plyer fallback."""
+        shown = False
+
+        # Method 1: Native Windows toast via PowerShell (most reliable, no extra deps)
+        try:
+            # Escape single quotes in message for PowerShell
+            safe_title = title.replace("'", "''")
+            safe_message = message.replace("'", "''")
+            ps_script = (
+                "[Windows.UI.Notifications.ToastNotificationManager, "
+                "Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null\n"
+                "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, "
+                "ContentType = WindowsRuntime] | Out-Null\n"
+                f"$xml = @'\n"
+                "<toast duration=\"long\">\n"
+                "  <visual>\n"
+                "    <binding template=\"ToastGeneric\">\n"
+                f"      <text>{safe_title}</text>\n"
+                f"      <text>{safe_message}</text>\n"
+                "    </binding>\n"
+                "  </visual>\n"
+                "  <audio src=\"ms-winsoundevent:Notification.Default\"/>\n"
+                "</toast>\n"
+                "'@\n"
+                "$doc = [Windows.Data.Xml.Dom.XmlDocument]::new()\n"
+                "$doc.LoadXml($xml)\n"
+                "$notifier = [Windows.UI.Notifications.ToastNotificationManager]::"
+                "CreateToastNotifier('EyeGuardian')\n"
+                "$toast = [Windows.UI.Notifications.ToastNotification]::new($doc)\n"
+                "$notifier.Show($toast)\n"
+            )
+            result = subprocess.run(
+                ['powershell', '-NoProfile', '-NonInteractive', '-Command', ps_script],
+                capture_output=True, text=True, timeout=10,
+                creationflags=0x08000000  # CREATE_NO_WINDOW
+            )
+            if result.returncode == 0:
+                shown = True
+                logger.info('Windows toast notification sent via PowerShell')
+            else:
+                logger.warning(f'PowerShell toast failed: {result.stderr.strip()}')
+        except Exception as e:
+            logger.warning(f'PowerShell toast error: {e}')
+
+        # Method 2: Plyer fallback (balloon-style, older Windows)
+        if not shown and PLYER_AVAILABLE:
+            try:
                 notification.notify(
                     title=title,
                     message=message,
-                    app_name='Eye & Posture Health',
+                    app_name='EyeGuardian',
                     timeout=duration,
                     toast_notification=True
                 )
+                shown = True
+                logger.info('Plyer toast notification sent')
+            except Exception as e:
+                logger.warning(f'Plyer notification error: {e}')
+
+        # Method 3: tkinter popup fallback (guaranteed visible)
+        if not shown:
+            return self._show_tkinter_popup(title, message, duration)
+
+        return True
+
+    def _show_tkinter_popup(self, title: str, message: str, duration: int = 10) -> bool:
+        """Show a tkinter popup window as a last-resort fallback. Always visible."""
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = _tk_root_ref
+            if root is not None:
+                # Schedule on main thread (safe for tkinter)
+                root.after(0, lambda: messagebox.showinfo(title, message))
                 return True
             else:
-                return self._show_fallback_notification(title, message)
+                # No root available - create temporary one
+                tmp = tk.Tk()
+                tmp.withdraw()
+                messagebox.showinfo(title, message)
+                tmp.destroy()
+                return True
         except Exception as e:
-            logger.error(f"Windows notification error: {e}")
+            logger.error(f'tkinter popup fallback error: {e}')
             return self._show_fallback_notification(title, message)
     
     def _show_linux_notification(self, title: str, message: str, 

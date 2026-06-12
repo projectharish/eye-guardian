@@ -18,6 +18,8 @@ import queue
 
 from main_app import EyePostureHealthApp
 from config_gui import ConfigGUI
+from notification_system import set_tk_root
+from autostart import AutostartManager
 
 # Use basic logging without file handler to avoid permission issues
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -40,10 +42,16 @@ class EyeGuardianGUI:
         
         # Build UI
         self.create_widgets()
-        
+
+        # Expose tkinter root to notification_system for popup fallbacks
+        set_tk_root(self.root)
+
         # Background App Thread
         self.app_thread = None
         self.start_app_thread()
+
+        # Run one-time Windows setup after the mainloop starts
+        self.root.after(2000, self._run_first_time_setup)
         
         # Update Loop
         self.update_interval = 1000  # 1 second
@@ -66,6 +74,34 @@ class EyeGuardianGUI:
             logger.info("Main GUI initialized in hidden mode")
         else:
             logger.info("Main GUI initialized")
+
+    def _run_first_time_setup(self):
+        """One-time setup tasks run after the GUI is fully initialised."""
+        import platform
+        if platform.system() != 'Windows':
+            return
+
+        # 1. Check & prompt notification permissions
+        try:
+            perm = self.app.notification_system.check_windows_notification_permissions()
+            if not perm.get('allowed', True):
+                logger.warning(f'Notification permissions issue: {perm.get("reason")}')
+                self.app.notification_system.prompt_windows_notification_permissions()
+        except Exception as e:
+            logger.warning(f'Permission check failed: {e}')
+
+        # 2. Apply autostart setting from config
+        try:
+            autostart_enabled = self.app.config.get('general', {}).get('autostart', True)
+            mgr = AutostartManager()
+            if autostart_enabled and not mgr.is_enabled():
+                mgr.enable()
+                logger.info('Autostart enabled via registry on startup')
+            elif not autostart_enabled and mgr.is_enabled():
+                mgr.disable()
+                logger.info('Autostart disabled on startup')
+        except Exception as e:
+            logger.warning(f'Autostart setup failed: {e}')
 
     def setup_styles(self):
         style = ttk.Style()

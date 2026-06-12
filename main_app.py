@@ -147,13 +147,13 @@ class EyePostureHealthApp:
                 },
                 "blink_reminder": {
                     "enabled": True,
-                    "interval_minutes": 10,
+                    "interval_minutes": 20,
                     "position": "top-right",
                     "duration_seconds": 5
                 },
                 "posture_reminder": {
                     "enabled": True,
-                    "interval_minutes": 15,
+                    "interval_minutes": 20,
                     "position": "top-right",
                     "duration_seconds": 10
                 }
@@ -219,7 +219,7 @@ class EyePostureHealthApp:
         if not config.get('enabled', True):
             return False
         
-        interval = config.get('interval_minutes', 5) * 60  # Convert to seconds
+        interval = config.get('interval_minutes', 20) * 60  # Convert to seconds
         return (time.time() - self.last_blink_time) >= interval
     
     def should_show_posture_notification(self) -> bool:
@@ -228,7 +228,7 @@ class EyePostureHealthApp:
         if not config.get('enabled', True):
             return False
         
-        interval = config.get('interval_minutes', 15) * 60  # Convert to seconds
+        interval = config.get('interval_minutes', 20) * 60  # Convert to seconds
         return (time.time() - self.last_posture_time) >= interval
     
     def should_check_camera(self) -> bool:
