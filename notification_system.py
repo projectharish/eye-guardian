@@ -96,6 +96,10 @@ class NotificationSystem:
             
             # Platform-specific notification
             if self.system == 'Windows':
+                # Ensure Windows notifications are allowed
+                status = self.check_windows_notification_permissions()
+                if not status['allowed']:
+                    self.prompt_windows_notification_permissions()
                 return self._show_windows_notification(title, message, duration, position)
             elif self.system == 'Linux':
                 return self._show_linux_notification(title, message, duration, position)
