@@ -33,8 +33,8 @@ def _get_exe_path() -> str:
         # Running as a compiled PyInstaller executable
         return sys.executable
     else:
-        # Running as a Python script
-        return f'"{sys.executable}" "{os.path.abspath(sys.argv[0])}"'
+        # Running as a Python script; return raw command without extra quotes
+        return f'{sys.executable} {os.path.abspath(sys.argv[0])}'
 
 
 class AutostartManager:
@@ -132,7 +132,9 @@ class AutostartManager:
             if getattr(sys, 'frozen', False):
                 cmd = f'"{self.exe_path}" --hidden'
             else:
-                cmd = self.exe_path
+                # exe_path is already a raw command string; quote it as a whole
+                cmd = f'"{self.exe_path}"'
+
 
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,

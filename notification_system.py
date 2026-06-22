@@ -185,12 +185,14 @@ class NotificationSystem:
                 if temp:
                     root.destroy()
 
-    def _show_windows_notification(self, title: str, message: str,
+def _show_windows_notification(self, title: str, message: str,
                                    duration: int, position: str) -> bool:
-        """Show notification on Windows using native PowerShell toast, with plyer fallback."""
-        shown = False
+    """Show notification on Windows using native PowerShell toast, with plyer fallback."""
+    shown = False
 
-        # Method 1: Native Windows toast via PowerShell (most reliable, no extra deps)
+    # Method 1: Native Windows toast via PowerShell (most reliable, no extra deps)
+    max_attempts = 2
+    for attempt in range(1, max_attempts + 1):
         try:
             # Escape single quotes in message for PowerShell
             safe_title = title.replace("'", "''")
@@ -225,32 +227,33 @@ class NotificationSystem:
             )
             if result.returncode == 0:
                 shown = True
-                logger.info('Windows toast notification sent via PowerShell')
+                logger.info(f'Windows toast notification sent via PowerShell (attempt {attempt})')
+                break
             else:
-                logger.warning(f'PowerShell toast failed: {result.stderr.strip()}')
+                logger.warning(f'PowerShell toast failed on attempt {attempt}: {result.stderr.strip()}')
         except Exception as e:
-            logger.warning(f'PowerShell toast error: {e}')
+            logger.warning(f'PowerShell toast error on attempt {attempt}: {e}')
 
-        # Method 2: Plyer fallback (balloon-style, older Windows)
-        if not shown and PLYER_AVAILABLE:
-            try:
-                notification.notify(
-                    title=title,
-                    message=message,
-                    app_name='EyeGuardian',
-                    timeout=duration,
-                    toast_notification=True
-                )
-                shown = True
-                logger.info('Plyer toast notification sent')
-            except Exception as e:
-                logger.warning(f'Plyer notification error: {e}')
+    # Method 2: Plyer fallback (balloon-style, older Windows)
+    if not shown and PLYER_AVAILABLE:
+        try:
+            notification.notify(
+                title=title,
+                message=message,
+                app_name='EyeGuardian',
+                timeout=duration,
+                toast_notification=True
+            )
+            shown = True
+            logger.info('Plyer toast notification sent')
+        except Exception as e:
+            logger.warning(f'Plyer notification error: {e}')
 
-        # Method 3: tkinter popup fallback (guaranteed visible)
-        if not shown:
-            return self._show_tkinter_popup(title, message, duration)
+    # Method 3: tkinter popup fallback (guaranteed visible)
+    if not shown:
+        return self._show_tkinter_popup(title, message, duration)
 
-        return True
+    return True
 
     def _show_tkinter_popup(self, title: str, message: str, duration: int = 10) -> bool:
         """Show a tkinter popup window as a last-resort fallback. Always visible."""
